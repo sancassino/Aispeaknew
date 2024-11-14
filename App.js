@@ -180,9 +180,9 @@ const inAppBuySubscription = async (plan) => {
   console.log(productId, "productId");
   
   try {
-    await requestSubscription({
-      sku: productId,
-    });
+    await requestSubscription({ sku: productId });
+  
+    setPage(4);
   } catch (error) {
     if (error instanceof PurchaseError) {
       Alert.alert('Purchase Error', `[${error.code}]: ${error.message}`);
@@ -2590,7 +2590,7 @@ if (page === 1) {
   return (
     <View style={{...styles.container, justifyContent: 'center', alignItems: 'center'}}>
       <Image
-        source={require('./assets/images/dadw2.jpg')}
+        source={require('./assets/images/dadwblue.png')}
         style={{...styles.image44, resizeMode: 'contain'}}
       />
     </View>
@@ -2603,7 +2603,7 @@ else if (page === 1800) {
     <View style={styles.container} {...panResponder1800.panHandlers}>
         {/* Image on first page */}
          <Image
-          source={require('./assets/images/dadw.jpg')}
+          source={require('./assets/images/dadwblue.png')}
           style={[
             styles.image,
               screenHeight <= 667
@@ -2698,7 +2698,7 @@ else if (page === 1800) {
         {/* Second page */}
         {/* Image on second page */}
         <Image
-          source={require('./assets/images/dadw.jpg')}
+          source={require('./assets/images/dadwblue.png')}
           style={[
             styles.image,
               screenHeight <= 667
@@ -2787,7 +2787,7 @@ else if (page === 1800) {
         {/* Third page */}
         {/* Image on third page */}
         <Image
-          source={require('./assets/images/dadw.jpg')}
+          source={require('./assets/images/dadwblue.png')}
           style={[
             styles.image,
              screenHeight <= 667
@@ -3653,7 +3653,7 @@ else if (page === 5) {
               placeholder="Introduzca su nombre"
             />
             <Image
-              source={require('./assets/images/[removal.ai]_789b56b9-8c8e-4d48-a760-5779c00b3445-dadw.png')}
+              source={require('./assets/images/dadwblue.png')}
               style={[
                 styles.image90,
                 {
@@ -3948,7 +3948,7 @@ else if (page === 7) {
 
 
       <Image
-          source={require('./assets/images/dadw.jpg')}
+          source={require('./assets/images/dadwblue.png')}
           style={{
             position: 'absolute',
             top: -5,
@@ -5094,7 +5094,7 @@ else if (page === 8) {
         </TouchableWithoutFeedback>
       </View>
       <Image
-        source={require('./assets/images/dadw.jpg')}
+        source={require('./assets/images/dadwblue.png')}
         style={{
           position: 'absolute',
           top: 15,
@@ -5160,7 +5160,7 @@ else if (page === 9) {
     <View style={{ flex: 1,marginTop: screenHeight <= 736 ? -70 : 0}}> 
      {screenHeight > 896 && (
     <Image
-      source={require('./assets/images/dadw.jpg')}
+      source={require('./assets/images/dadwblue.png')}
       style={{
         width: 150,
         height: 150,
@@ -6032,10 +6032,13 @@ else if (page === 122) {
         ]}
       />
       <Image
-        source={require('./assets/images/dadw.jpg')}
+        source={require('./assets/images/dadwblue.png')}
         style={[
           styles.image,
-          { position: 'absolute', bottom: '87%', left: 140, resizeMode: 'contain' },
+          {position: 'absolute',
+      bottom: '87%',
+      alignSelf: 'center',  // This will center it horizontally
+      resizeMode: 'contain' },
         ]}
       />
       
@@ -6141,10 +6144,13 @@ else if (page === 122) {
           ]}
         />
          <Image
-          source={require('./assets/images/dadw.jpg')}
+          source={require('./assets/images/dadwblue.png')}
           style={[
             styles.image,
-            { position: 'absolute', top: 25, left: 140, resizeMode: 'contain' },
+            {position: 'absolute',
+      bottom: '87%',
+      alignSelf: 'center',  // This will center it horizontally
+      resizeMode: 'contain' },
           ]}
         />
         
@@ -6223,10 +6229,13 @@ else if (page === 122) {
           ]}
         />
       <Image
-          source={require('./assets/images/dadw.jpg')}
+          source={require('./assets/images/dadwblue.png')}
           style={[
             styles.image,
-             { position: 'absolute', bottom: '87%', left: 140, resizeMode: 'contain' },
+             { position: 'absolute',
+      bottom: '87%',
+      alignSelf: 'center',  // This will center it horizontally
+      resizeMode: 'contain' },
           ]}
         />
       <TextInput 
@@ -8190,7 +8199,7 @@ const spin = this.state.rotation.interpolate({
    
  
     }}
-    placeholder={this.state.isRecording ? "Recording..." : "Escribe tu mensaje"}
+    placeholder={this.state.isRecording ? "Grabando..." : "Escribe tu mensaje"}
     placeholderTextColor={this.state.isRecording ? 'red' : 'gray'} // Set placeholder text color
     value={this.state.newMessage}
 
