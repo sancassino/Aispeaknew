@@ -953,7 +953,7 @@ useEffect(() => {
           const timeoutStartTimestamp = JSON.parse(value);
           const now = Date.now();
           const timeElapsed = now - timeoutStartTimestamp;
-          const newRemainingTime = 120000 - timeElapsed; // 12 hours in milliseconds
+          const newRemainingTime = 43200000 - timeElapsed; // 12 hours in milliseconds
 
           console.log('timeoutStartTimestamp:', timeoutStartTimestamp);
           console.log('Current time:', now);
@@ -964,7 +964,7 @@ useEffect(() => {
             setRemainingTime(newRemainingTime);
             setIsTimeoutActive(true);
           } else {
-            setRemainingTime(120000); // Reset remaining time
+            setRemainingTime(43200000); // Reset remaining time
             setIsTimeoutActive(false);
           }
         }
@@ -1281,7 +1281,7 @@ AsyncStorage.getItem('timeoutStartTimestamp').then(value => {
     const timeoutStartTimestamp = JSON.parse(value);
     const now = Date.now();
     const timeElapsed = now - timeoutStartTimestamp;
-    const newRemainingTime = 120000 - timeElapsed; // 12 hours in milliseconds
+    const newRemainingTime = 43200000 - timeElapsed; // 12 hours in milliseconds
 
     console.log('timeoutStartTimestamp:', timeoutStartTimestamp);
     console.log('Current time:', now);
@@ -1292,7 +1292,7 @@ AsyncStorage.getItem('timeoutStartTimestamp').then(value => {
       setRemainingTime(newRemainingTime);
       setIsTimeoutActive(true);
     } else {
-    setRemainingTime(120000); // Reset remaining time
+    setRemainingTime(43200000); // Reset remaining time
             setIsTimeoutActive(false);
     }
   }
@@ -2314,7 +2314,7 @@ const [trialChatCount, setTrialChatCount] = useState(0);
 const [isTimeoutActive, setIsTimeoutActive] = useState(false);
 const [thirdchat, setthirdchat] = useState(false);
 
-const [remainingTime, setRemainingTime] = useState(120000); // 12 hours in milliseconds
+const [remainingTime, setRemainingTime] = useState(43200000); // 12 hours in milliseconds
 const timeoutRef = useRef(null);
 const intervalRef = useRef(null);
 const handleTimeoutAndInterval = useCallback(() => {
@@ -2324,7 +2324,7 @@ const handleTimeoutAndInterval = useCallback(() => {
     // Set a timeout to reset isTimeoutActive after the remaining time
     timeoutRef.current = setTimeout(() => {
       setIsTimeoutActive(false);
-      setRemainingTime(120000); // Reset remaining time
+      setRemainingTime(43200000); // Reset remaining time
     }, remainingTime);
 
     // Set an interval to update the remaining time every second
@@ -2376,7 +2376,7 @@ const handleStartNewChat = useCallback(() => {
       const timeElapsed = now - firstChatTimestamp;
       const minutesElapsed = timeElapsed / (1000 * 60);
 
-      if (minutesElapsed >= 2) { // Change to 12 hours (720 minutes)
+      if (minutesElapsed >= 720) { // Change to 12 hours (720 minutes)
         setChatCount(1);
         setFirstChatTimestamp(now);
         setIsTimeoutActive(false);
@@ -2565,7 +2565,7 @@ const [visitedPage1, setVisitedPage1] = useState(false);
 useEffect(() => {
   if (page === 1) {
     const now = new Date().getTime();
-    const canStartNewChat = trialChatCount < 10 || chatCount < 3 || (now - firstChatTimestamp) / (1000 * 60) >= 2; // Change to 12 hours (720 minutes)
+    const canStartNewChat = trialChatCount < 10 || chatCount < 3 || (now - firstChatTimestamp) / (1000 * 60) >= 720; // Change to 12 hours (720 minutes)
 
     if (canStartNewChat) {
       setIsTimeoutActive(false);
