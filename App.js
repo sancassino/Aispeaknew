@@ -70,6 +70,8 @@ export default function App() {
   const [currentPlan, setCurrentPlan] = useState('Básico'); // User's current plan
   const [currentBillingCycle, setCurrentBillingCycle] = useState('Anual'); // User's current billing cycle
   const [selectedPlan, setSelectedPlan1] = useState(currentPlan);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
   const [selectedBillingCycle, setSelectedBillingCycle] =
     useState(currentBillingCycle);
   const planDetails = {
@@ -105,36 +107,23 @@ export default function App() {
     },
   };
 
- useEffect(() => {
+
+
+useEffect(() => {
     const initializePurchases = async () => {
         try {
-            Purchases.configure({
+             Purchases.configure({
                 apiKey: 'appl_ZCRKPqKkJXZKsKBndqNVenQETdi'
             });
+            await inAppGetSubscriptions(); // Pre-fetch offerings for faster access
         } catch (e) {
             console.error('Failed to initialize purchases:', e);
         }
     };
     
     initializePurchases();
-}, []);
-
- useEffect(() => {
-    if (page === 4000) {
-        const init = async () => {
-            try {
-                Purchases.configure({
-                    apiKey: 'appl_ZCRKPqKkJXZKsKBndqNVenQETdi'
-                });
-                await inAppGetSubscriptions();
-            } catch (e) {
-                console.error(e);
-            }
-        };
-
-        init();
-    }
-}, [page]);
+}, []); // Empty dependency array ensures it runs once when component mounts
+ 
 
   // Function to fetch subscriptions (following docs pattern)
   const inAppGetSubscriptions = async () => {
@@ -155,35 +144,68 @@ export default function App() {
   };
 
   // Function to handle subscription purchase (following docs pattern)
-  const inAppBuySubscription = async (selectedPlan) => {
-  try {
-    const offerings = await Purchases.getOfferings();
-    
-    const packageId = selectedPlan === 'Básico' ? 'basic' : 'pro';
-    let fullPackageId = packageId + (selectedBillingCycle === 'Mensual' ? 'Monthly' : 'Yearly');
-    
-    // Add trial identifier if trial is active
-    if (isTrialActive) {
-      fullPackageId += '7free';
+const inAppBuySubscription = async (selectedPlan) => {
+    try {
+        const offerings = await Purchases.getOfferings();
+        
+        const packageId = selectedPlan === 'Básico' ? 'basic' : 'pro';
+        let fullPackageId = packageId + (selectedBillingCycle === 'Mensual' ? 'Monthly' : 'Yearly');
+        
+        if (isTrialActive) {
+            fullPackageId += '7free';
+        }
+        
+        const packageToPurchase = offerings.current?.availablePackages.find(
+            pkg => pkg.identifier === fullPackageId
+        );
+        
+        if (!packageToPurchase) {
+            throw new Error(`No ${selectedBillingCycle.toLowerCase()} package found for ${selectedPlan} plan`);
+        }
+        
+        const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+        console.log('Purchase successful:', customerInfo);
+        setPage(4);
+    } catch (error) {
+        if (!error.userCancelled) {
+            console.error('Purchase error:', error);
+            Alert.alert('Purchase Error', error.message);
+        }
+    } finally {
+        setIsSubscribing(false);  // End loading state regardless of outcome
     }
-    
-    const packageToPurchase = offerings.current?.availablePackages.find(
-      pkg => pkg.identifier === fullPackageId
-    );
-    
-    if (!packageToPurchase) {
-      throw new Error(`No ${selectedBillingCycle.toLowerCase()} package found for ${selectedPlan} plan`);
+};
+
+const inAppBuySubscription4001 = async (selectedPlan) => {
+    try {
+        const offerings = await Purchases.getOfferings();
+        
+        const packageId = selectedPlan === 'Básico' ? 'basic' : 'pro';
+        let fullPackageId = packageId + (selectedBillingCycle === 'Mensual' ? 'Monthly' : 'Yearly');
+        
+        if (isTrialActive) {
+            fullPackageId += '7free';
+        }
+        
+        const packageToPurchase = offerings.current?.availablePackages.find(
+            pkg => pkg.identifier === fullPackageId
+        );
+        
+        if (!packageToPurchase) {
+            throw new Error(`No ${selectedBillingCycle.toLowerCase()} package found for ${selectedPlan} plan`);
+        }
+        
+        const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
+        console.log('Purchase successful:', customerInfo);
+        
+    } catch (error) {
+        if (!error.userCancelled) {
+            console.error('Purchase error:', error);
+            Alert.alert('Purchase Error', error.message);
+        }
+    } finally {
+        setIsSubscribing(false);  // End loading state regardless of outcome
     }
-    
-    const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-    console.log('Purchase successful:', customerInfo);
-    setPage(4);
-  } catch (error) {
-    if (!error.userCancelled) {
-      console.error('Purchase error:', error);
-      Alert.alert('Purchase Error', error.message);
-    }
-  }
 };
   // Optional: Add listener for purchase updates
   useEffect(() => {
@@ -2739,6 +2761,25 @@ export default function App() {
 
         return (
             <View style={{ flex: 1.25 }}>
+
+             {isSubscribing && (
+    <View style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        zIndex: 1000
+    }}>
+        <ActivityIndicator size="large" color="#ffffff" />
+        <Text style={{ color: 'white', marginTop: 10 }}>
+            Procesando tu suscripción...
+        </Text>
+    </View>
+)}
                 {/* Top Section */}
                 <View style={{ flex: 1, backgroundColor: '#FEBA01', paddingTop: 55 }}>
                     {/* Container for Logo and Cancel Button */}
@@ -2754,46 +2795,9 @@ export default function App() {
                         />
 
                         {/* Cancel Button (absolutely positioned on top-right) */}
-                          <TouchableWithoutFeedback
-    onPress={() => {
-        Alert.alert(
-            'Cancelar tu plan de suscripción',
-            "Puedes cancelar la prueba gratuita antes de que terminen los 7 días.",
-            [
-                {
-                    text: 'OK',
-                    onPress: () => {
-                        console.log('OK Pressed');
-                    },
-                    style: 'default'
-                }
-            ],
-            { cancelable: true }
-        );
-    }}
->
-    <View style={{
-        position: 'absolute',
-        right: 20,
-        top: 15,
-        flexDirection: 'row',
-        alignItems: 'center',
-        zIndex: 999,
-        padding: 5  // Added for better touch area
-    }}>
-        <Image
-            source={require('./assets/images/whiteex.png')}
-            style={{
-                width: 15,
-                height: 15,
-                resizeMode: 'contain',
-                marginRight: 5,
-            }}
-        />
-        <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
-    </View>
-</TouchableWithoutFeedback>
+                       
                     </View>
+                    
 
                     <View style={{ flex: 1, alignItems: 'center', paddingTop: 45 }}>
                         <Text
@@ -2825,6 +2829,46 @@ export default function App() {
                         </Animated.View>
                     )}
                 </View>
+
+                 <TouchableWithoutFeedback
+    onPress={() => {
+        Alert.alert(
+            'Cancelar tu plan de suscripción',
+            "Puedes cancelar la prueba gratuita antes de que terminen los 7 días.",
+            [
+                {
+                    text: 'OK',
+                    onPress: () => {
+                        console.log('OK Pressed');
+                    },
+                    style: 'default'
+                }
+            ],
+            { cancelable: true }
+        );
+    }}
+>
+    <View style={{
+        position: 'absolute',
+        right: 20,
+        top: 70,
+        flexDirection: 'row',
+        alignItems: 'center',
+        zIndex: 999,
+        padding: 5  // Added for better touch area
+    }}>
+        <Image
+            source={require('./assets/images/whiteex.png')}
+            style={{
+                width: 15,
+                height: 15,
+                resizeMode: 'contain',
+                marginRight: 5,
+            }}
+        />
+        <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
+    </View>
+</TouchableWithoutFeedback>
 
                 {/* Bottom Section */}
                 <View
@@ -3016,6 +3060,7 @@ export default function App() {
     if (selectedBillingCycle) {
         // Set the states as currently implemented
         setCurrentPlan(selectedPlan);
+        setIsSubscribing(true);
         setCurrentBillingCycle(selectedBillingCycle);
         
         // Call the purchase function with the selected plan
@@ -3091,9 +3136,9 @@ export default function App() {
         const dynamicMarginTop = -0.10 * screenHeight;
 
         // Check if the plan has changed
-        const isPlanChanged =
-            selectedPlan !== currentPlan ||
-            selectedBillingCycle !== currentBillingCycle;
+      const isPlanChanged =
+    (selectedPlan || '') !== (currentPlan || '') ||
+    (selectedBillingCycle || '') !== (currentBillingCycle || '');
 
         // Button text based on plan change
         const buttonText = isPlanChanged
@@ -3117,7 +3162,23 @@ export default function App() {
                         />
 
                         {/* Cancel Button (absolutely positioned on top-right) */}
-                         <TouchableWithoutFeedback
+                       
+
+                    </View>
+                    <View style={{ alignItems: 'center', paddingTop: 45 }}>
+                        <Text
+                            style={{
+                                fontSize: 24,
+                                fontWeight: 'bold',
+                                color: 'black',
+                                marginTop: 10,
+                                textAlign: 'center',
+                            }}>
+                            ¿Cambia tu {'\n'} plan actual?
+                        </Text>
+                    </View>
+                </View>
+                 <TouchableWithoutFeedback
     onPress={() => {
         Alert.alert(
             'Cancelar tu plan de suscripción',
@@ -3138,7 +3199,7 @@ export default function App() {
     <View style={{
         position: 'absolute',
         right: 20,
-        top: 15,
+        top: 70,
         flexDirection: 'row',
         alignItems: 'center',
         zIndex: 999,
@@ -3156,21 +3217,6 @@ export default function App() {
         <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
     </View>
 </TouchableWithoutFeedback>
-
-                    </View>
-                    <View style={{ alignItems: 'center', paddingTop: 45 }}>
-                        <Text
-                            style={{
-                                fontSize: 24,
-                                fontWeight: 'bold',
-                                color: 'black',
-                                marginTop: 10,
-                                textAlign: 'center',
-                            }}>
-                            ¿Cambia tu {'\n'} plan actual?
-                        </Text>
-                    </View>
-                </View>
 
                 {/* Bottom Section */}
                 <View
@@ -3254,9 +3300,9 @@ export default function App() {
                         style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         {['Mensual', 'Anual'].map((billingCycle) => {
                             const isCurrentPlan =
-                                selectedPlan === currentPlan &&
-                                billingCycle === currentBillingCycle;
-                            const isSelected = selectedBillingCycle === billingCycle;
+    (selectedPlan || '') === (currentPlan || '') &&
+    (billingCycle || '') === (currentBillingCycle || '');
+const isSelected = (selectedBillingCycle || '') === (billingCycle || '');
 
                             return (
                                 <TouchableOpacity
@@ -3360,10 +3406,11 @@ export default function App() {
                             if (isPlanChanged) {
                                 // Update subscription
                                 setCurrentPlan(selectedPlan);
+                                setIsSubscribing(true);
+                                  inAppBuySubscription4001(selectedPlan)
                                 setCurrentBillingCycle(selectedBillingCycle);
 
                                 if (currentPlan === 'Pro') {
-                                    handleStartNewChat();
 
                                     // Lift timeout and reset chat counts
                                     setIsTimeoutActive(false);
@@ -3376,7 +3423,6 @@ export default function App() {
                                     AsyncStorage.setItem('chatCount', JSON.stringify(0));
                                     AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
                                 } else if (currentPlan === 'Básico') {
-                                    handleStartNewChat();
 
                                     // Reset chat counts and reapply timeout logic
                                     setChatCount(0);
@@ -3698,6 +3744,7 @@ export default function App() {
     if (selectedBillingCycle) {
         // Set the states as currently implemented
         setCurrentPlan(selectedPlan);
+        setIsSubscribing(true);
         setCurrentBillingCycle(selectedBillingCycle);
         
         // Call the purchase function with the selected plan
