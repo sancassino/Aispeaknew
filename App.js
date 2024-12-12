@@ -107,7 +107,21 @@ export default function App() {
     },
   };
 
+  const [alreadySelectedPlan, setAlreadySelectedPlan] = useState(false);
+  onPress = () => {
+    if (selectedBillingCycle) {
+      setCurrentPlan(selectedPlan);
+      setCurrentBillingCycle(selectedBillingCycle);
+      // If currentPlan was 'Pro', do your Pro-specific logic here...
 
+      // Now mark that a plan has been selected
+      setAlreadySelectedPlan(true);
+
+      setPage(4); // proceed as per your logic
+    } else {
+      Alert.alert('Por favor, selecciona un ciclo de facturación');
+    }
+  }
 
 useEffect(() => {
     const initializePurchases = async () => {
@@ -165,48 +179,26 @@ const inAppBuySubscription = async (selectedPlan) => {
         
         const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
         console.log('Purchase successful:', customerInfo);
-        setPage(4);
+
+        // Set the current plan and billing cycle after successful purchase
+        setCurrentPlan(selectedPlan);
+        setCurrentBillingCycle(selectedBillingCycle);
+
+        if (!alreadySelectedPlan) {
+            setPage(4);
+            setAlreadySelectedPlan(true);
+            AsyncStorage.setItem('alreadySelectedPlan', JSON.stringify(true));
+        }
     } catch (error) {
         if (!error.userCancelled) {
             console.error('Purchase error:', error);
             Alert.alert('Purchase Error', error.message);
         }
     } finally {
-        setIsSubscribing(false);  // End loading state regardless of outcome
+        setIsSubscribing(false);
     }
 };
 
-const inAppBuySubscription4001 = async (selectedPlan) => {
-    try {
-        const offerings = await Purchases.getOfferings();
-        
-        const packageId = selectedPlan === 'Básico' ? 'basic' : 'pro';
-        let fullPackageId = packageId + (selectedBillingCycle === 'Mensual' ? 'Monthly' : 'Yearly');
-        
-        if (isTrialActive) {
-            fullPackageId += '7free';
-        }
-        
-        const packageToPurchase = offerings.current?.availablePackages.find(
-            pkg => pkg.identifier === fullPackageId
-        );
-        
-        if (!packageToPurchase) {
-            throw new Error(`No ${selectedBillingCycle.toLowerCase()} package found for ${selectedPlan} plan`);
-        }
-        
-        const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-        console.log('Purchase successful:', customerInfo);
-        
-    } catch (error) {
-        if (!error.userCancelled) {
-            console.error('Purchase error:', error);
-            Alert.alert('Purchase Error', error.message);
-        }
-    } finally {
-        setIsSubscribing(false);  // End loading state regardless of outcome
-    }
-};
   // Optional: Add listener for purchase updates
   useEffect(() => {
     const purchaseListener = Purchases.addCustomerInfoUpdateListener((info) => {
@@ -985,7 +977,11 @@ const inAppBuySubscription4001 = async (selectedPlan) => {
                     setCurrentCountIntermedio(parseInt(value, 10));
                 }
             });
-
+  AsyncStorage.getItem('alreadySelectedPlan').then((value) => {
+            if (value !== null) {
+                setAlreadySelectedPlan(JSON.parse(value));
+            }
+        });
             AsyncStorage.getItem('currentCountAvanzado').then((value) => {
                 if (value !== null) {
                     setCurrentCountAvanzado(parseInt(value, 10));
@@ -1034,6 +1030,17 @@ const inAppBuySubscription4001 = async (selectedPlan) => {
                     isFirstChat = JSON.parse(value);
                 }
             });
+              AsyncStorage.getItem('currentPlan').then((value) => {
+    if (value !== null) {
+      setCurrentPlan(JSON.parse(value));
+    }
+  });
+
+  AsyncStorage.getItem('currentBillingCycle').then((value) => {
+    if (value !== null) {
+      setCurrentBillingCycle(JSON.parse(value));
+    }
+  });
             AsyncStorage.getItem('isFirstsentence2').then((value) => {
                 if (value !== null) {
                     isFirstsentence2 = JSON.parse(value);
@@ -1320,6 +1327,9 @@ const inAppBuySubscription4001 = async (selectedPlan) => {
             AsyncStorage.setItem('chatCountLevel9', chatCountLevel9.toString());
             AsyncStorage.setItem('chatCountLevel10', chatCountLevel10.toString());
             AsyncStorage.setItem('avatarKey', avatarKey);
+              AsyncStorage.setItem('currentPlan', JSON.stringify(currentPlan));
+  AsyncStorage.setItem('currentBillingCycle', JSON.stringify(currentBillingCycle));
+
             AsyncStorage.setItem('avatarKey2', avatarKey2);
             AsyncStorage.setItem('avatarKey3', avatarKey3);
             AsyncStorage.setItem('avatarKey4', avatarKey4);
@@ -1340,6 +1350,8 @@ const inAppBuySubscription4001 = async (selectedPlan) => {
                 JSON.stringify(hasModalBeenShown)
             );
             AsyncStorage.setItem('isMicEnabled', JSON.stringify(isMicEnabled));
+            AsyncStorage.setItem('alreadySelectedPlan', JSON.stringify(alreadySelectedPlan));
+
             AsyncStorage.setItem('isLoggedIn', JSON.stringify(isLoggedIn));
             AsyncStorage.setItem(
                 'currentCountPrincipiante',
@@ -1382,11 +1394,14 @@ const inAppBuySubscription4001 = async (selectedPlan) => {
         firstTimeModal,
         profilePicture,
         currentCount,
+        currentPlan,
+        currentBillingCycle,
         currentLevel,
         chatCountLevel1,
         chatCountLevel2,
         chatCountLevel3,
         chatCountLevel4,
+        alreadySelectedPlan,
         chatCountLevel5,
         chatCountLevel6,
         chatCountLevel7,
@@ -2743,723 +2758,695 @@ const inAppBuySubscription4001 = async (selectedPlan) => {
                 </Text>
             </View>
         );
-    } else if (page === 4000) {
-        const selectedPlanDetails = planDetails[selectedPlan];
+    }  else if (page === 4000) {
+    const selectedPlanDetails = planDetails[selectedPlan];
+    const dynamicMarginTop = -0.1 * screenHeight;
 
-        const dynamicMarginTop = -0.1 * screenHeight;
+    const smallBoxTexts = {
+      Básico: {
+        Mensual: 'Solo 3 cafés',
+        Anual: 'Ahorra £26',
+      },
+      Pro: {
+        Mensual: 'Solo 5 cafés',
+        Anual: 'Ahorra £26',
+      },
+    };
 
-        const smallBoxTexts = {
-            Básico: {
-                Mensual: 'Solo 3 cafés',
-                Anual: 'Ahorra £26',
-            },
-            Pro: {
-                Mensual: 'Solo 5 cafés',
-                Anual: 'Ahorra £26',
-            },
-        };
+    const isPlanChanged = selectedPlan !== currentPlan || selectedBillingCycle !== currentBillingCycle;
+    const buttonText = isPlanChanged
+      ? 'Cambiar mi plan actual  >'
+      : 'Conservar mi plan actual  >';
 
-        return (
-            <View style={{ flex: 1.25 }}>
-
-             {isSubscribing && (
-    <View style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        zIndex: 1000
-    }}>
-        <ActivityIndicator size="large" color="#ffffff" />
-        <Text style={{ color: 'white', marginTop: 10 }}>
-            Procesando tu suscripción...
-        </Text>
-    </View>
-)}
-                {/* Top Section */}
-                <View style={{ flex: 1, backgroundColor: '#FEBA01', paddingTop: 55 }}>
-                    {/* Container for Logo and Cancel Button */}
-                    <View style={{ position: 'relative', alignItems: 'center' }}>
-                        {/* Logo */}
-                        <Image
-                            source={require('./assets/images/dadwblue.png')}
-                            style={{
-                                width: 200,
-                                height: 56,
-                                resizeMode: 'contain',
-                            }}
-                        />
-
-                        {/* Cancel Button (absolutely positioned on top-right) */}
-                       
-                    </View>
-                    
-
-                    <View style={{ flex: 1, alignItems: 'center', paddingTop: 45 }}>
-                        <Text
-                            style={{
-                                fontSize: 24,
-                                fontWeight: 'bold',
-                                color: textColor,
-                                marginTop: 20,
-                                textAlign: 'center',
-                            }}>
-                            ¿Cuál prefieres?
-                        </Text>
-                    </View>
-
-                    {/* Optional animated image */}
-                    {makeUserWant && (
-                        <Animated.View
-                            style={{
-                                opacity: popAnim,
-                                transform: [{ scale: popAnim }],
-                                position: 'absolute',
-                                marginTop: 20,
-                                right: 0,
-                            }}>
-                            <Image
-                                source={require('./assets/images/capiandchat.png')}
-                                style={{ width: 350, height: 350 }}
-                            />
-                        </Animated.View>
-                    )}
-                </View>
-
-                 <TouchableWithoutFeedback
-    onPress={() => {
-        Alert.alert(
-            'Cancelar tu plan de suscripción',
-            "Puedes cancelar la prueba gratuita antes de que terminen los 7 días.",
-            [
-                {
-                    text: 'OK',
-                    onPress: () => {
-                        console.log('OK Pressed');
-                    },
-                    style: 'default'
-                }
-            ],
-            { cancelable: true }
-        );
-    }}
->
-    <View style={{
-        position: 'absolute',
-        right: 20,
-        top: 70,
-        flexDirection: 'row',
-        alignItems: 'center',
-        zIndex: 999,
-        padding: 5  // Added for better touch area
-    }}>
-        <Image
-            source={require('./assets/images/whiteex.png')}
-            style={{
-                width: 15,
-                height: 15,
-                resizeMode: 'contain',
-                marginRight: 5,
-            }}
-        />
-        <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
-    </View>
-</TouchableWithoutFeedback>
-
-                {/* Bottom Section */}
-                <View
-                    style={{
-                        flex: 1.75,
-                        backgroundColor: '#017CFE',
-                        padding: 20,
-                        justifyContent: 'center',
-                    }}>
-                    {/* Plan Toggle */}
-                    <View
-                        style={{
-                            flexDirection: 'row',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginBottom: 10,
-                            marginTop: dynamicMarginTop,
-                            paddingVertical: 10,
-                            paddingHorizontal: 10,
-                            backgroundColor: 'white',
-                            borderRadius: 25,
-                            alignSelf: 'center',
-                        }}>
-                        <TouchableOpacity
-                            onPress={() => setSelectedPlan1('Básico')}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 25,
-                                backgroundColor:
-                                    selectedPlan === 'Básico' ? '#017CFE' : 'white',
-                                borderRadius: 20,
-                                marginHorizontal: 5,
-                            }}>
-                            <Text
-                                style={{
-                                    color: selectedPlan === 'Básico' ? '#FFF' : '#000',
-                                    fontWeight: 'bold',
-                                    fontSize: fontSizeLarge,
-                                }}>
-                                Básico
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setSelectedPlan1('Pro')}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 25,
-                                backgroundColor: selectedPlan === 'Pro' ? '#017CFE' : 'white',
-                                borderRadius: 20,
-                                marginHorizontal: 5,
-                            }}>
-                            <Text
-                                style={{
-                                    color: selectedPlan === 'Pro' ? '#FFF' : '#000',
-                                    fontWeight: 'bold',
-                                    fontSize: fontSizeLarge,
-                                }}>
-                                Pro
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    {/* Features Section */}
-                    <View style={{ marginTop: 20 }}>
-                        {selectedPlanDetails.features.map((feature, index) => (
-                            <Text
-                                key={index}
-                                style={{
-                                    fontSize: fontSizeLarge,
-                                    color: 'white',
-                                    marginBottom: 25,
-                                }}>
-                                <Text
-                                    style={{
-                                        fontSize: fontSizeLarge,
-                                        color: '#FEBA01',
-                                        fontWeight: 'bold',
-                                    }}>
-                                    ✓
-                                </Text>{' '}
-                                {feature}
-                            </Text>
-                        ))}
-                    </View>
-
-                    {/* Billing Cycle Toggle */}
-                    <View
-                        style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        {/* Mensual and Anual Options */}
-                        {['Mensual', 'Anual'].map((billingCycle) => {
-                            const isSelected = selectedBillingCycle === billingCycle;
-                            return (
-                                <TouchableOpacity
-                                    key={billingCycle}
-                                    onPress={() => setSelectedBillingCycle(billingCycle)}
-                                    style={{
-                                        flex: 1,
-                                        borderWidth: 1,
-                                        borderColor: 'white',
-                                        padding: 1,
-                                        borderRadius: 20,
-                                        marginHorizontal: 5,
-                                        alignItems: 'center',
-                                        backgroundColor: isSelected ? 'white' : 'transparent',
-                                        height: 110, // Sabit yükseklik
-                                        marginTop: 5,
-
-                                    }}>
-                                    {/* Small Box */}
-                                    <View
-                                        style={{
-                                            backgroundColor: isSelected ? '#FEBA01' : 'white',
-                                            paddingVertical: 5,
-                                            paddingHorizontal: 8,
-                                            borderRadius: 5,
-                                            position: 'absolute',
-                                            top: -10,
-                                            alignSelf: 'center',
-                                        }}>
-                                        <Text style={{ color: 'black', fontSize: fontSizeSmall }}>
-                                            {smallBoxTexts[selectedPlan][billingCycle]}
-                                        </Text>
-                                    </View>
-
-                                    {/* Price */}
-                                    <Text
-                                        style={{
-                                            fontSize: fontSizeHuge,
-                                            fontWeight: 'bold',
-                                            color: isSelected ? 'black' : 'white',
-                                            marginTop: 20,
-                                            padding: 5,
-
-                                        }}>
-                                        {selectedPlanDetails[billingCycle].price}
-                                    </Text>
-                                    <Text
-                                        style={{
-                                            fontSize: fontSizeLarge,
-                                            color: isSelected ? 'black' : 'white',
-                                            padding: 5,
-
-                                        }}>
-                                        {selectedPlanDetails[billingCycle].cycle}
-                                    </Text>
-                                    {/* Checkmark Icon */}
-                                    {isSelected && (
-                                        <View
-                                            style={{
-                                                position: 'absolute',
-                                                top: -10,
-                                                right: -5,
-                                                backgroundColor: '#FEBA01',
-                                                width: 20, // Genişlik eklendi
-                                                height: 20, // Yükseklik eklendi
-                                                borderRadius: 10, // Tam bir daire için yarıçap                                                
-                                                padding: 5,
-                                                justifyContent: 'center', // Dikey merkezleme
-
-                                            }}>
-                                            <Text
-                                                style={{
-                                                    color: 'black',
-                                                    fontSize: 12,
-                                                    fontWeight: 'bold',
-                                                    textAlign: 'center',
-                                                }}>
-                                                ✓
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-
-                    {/* Seleccionar Button */}
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: '#FFB901',
-                            paddingVertical: 15,
-                            borderRadius: 40,
-                            marginTop: 20,
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            width: '100%',
-                        }}
-                       onPress={() => {
-    if (selectedBillingCycle) {
-        // Set the states as currently implemented
-        setCurrentPlan(selectedPlan);
-        setIsSubscribing(true);
-        setCurrentBillingCycle(selectedBillingCycle);
-        
-        // Call the purchase function with the selected plan
-        inAppBuySubscription(selectedPlan)
-            .then(() => {
-                // These state updates should only occur after successful purchase
-                if (selectedPlan === 'Pro') {
-                    setIsTimeoutActive(false);
-                    setChatCount(0);
-                    setTrialChatCount(0);
-                    AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
-                    AsyncStorage.setItem('chatCount', JSON.stringify(0));
-                    AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
-                }
-                // Navigation happens automatically in inAppBuySubscription on success
-            })
-            .catch((error) => {
-                // Error handling is already implemented in inAppBuySubscription
-                console.log('Purchase flow failed:', error);
-            });
-    }
-
-                        }}>
-                        <Text
-                            style={{
-                                color: 'black',
-                                fontSize: fontSizeLarge,
-                                fontWeight: 'bold',
-                            }}>
-                            {isTrialActive ? 'Suscríbete: 7 días gratis >' : 'Suscríbete >'}
-                        </Text>
-                    </TouchableOpacity>
-
-                    {/* Free Trial Section */}
-                    <View
-                        style={{
-                            // "Seleccionar" butonuyla aynı kalınlık ve genişlik için benzer değerler:
-                            backgroundColor: 'white',
-                            paddingVertical: 10,
-                            borderRadius: 40,
-                            marginTop: 20,
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            width: '100%',
-                            flexDirection: 'row',
-                            justifyContent: 'space-between',
-                            paddingHorizontal: 10,
-                            // İsteğe bağlı: marginBottom kullanmayabilirsiniz, "Seleccionar" butonunda yok.
-                        }}
-                    >
-                        <Text
-                            style={{
-                                fontSize: 14,
-                                color: 'black',
-                                fontWeight: 'bold',
-                                textAlign: 'center',
-                                marginLeft: 10,
-                            }}>
-                            ¿No sabes? Activa prueba gratis
-                        </Text>
-                        <Switch
-                            value={isTrialActive}
-                            onValueChange={(value) => setIsTrialActive(value)}
-                            thumbColor={isTrialActive ? '#FFF' : '#FFF'}
-                            trackColor={{ false: '#767577', true: '#017CFE' }}
-                        />
-                    </View>
-                </View>
-            </View >
-        );
-    } else if (page === 4001) {
-        const selectedPlanDetails = planDetails[selectedPlan];
-        const dynamicMarginTop = -0.10 * screenHeight;
-
-        // Check if the plan has changed
-      const isPlanChanged =
-    (selectedPlan || '') !== (currentPlan || '') ||
-    (selectedBillingCycle || '') !== (currentBillingCycle || '');
-
-        // Button text based on plan change
-        const buttonText = isPlanChanged
-            ? 'Cambiar mi plan actual  >'
-            : 'Conservar mi plan actual  >';
-
-        return (
-            <View style={{ flex: 1.25 }}>
-                {/* Top Section */}
-                <View style={{ flex: 1, backgroundColor: '#FEBA01', paddingTop: 55 }}>
-                    {/* Container for Logo and Cancel Button */}
-                    <View style={{ position: 'relative', alignItems: 'center' }}>
-                        {/* Logo */}
-                        <Image
-                            source={require('./assets/images/dadwblue.png')}
-                            style={{
-                                width: 200,
-                                height: 56,
-                                resizeMode: 'contain',
-                            }}
-                        />
-
-                        {/* Cancel Button (absolutely positioned on top-right) */}
-                       
-
-                    </View>
-                    <View style={{ alignItems: 'center', paddingTop: 45 }}>
-                        <Text
-                            style={{
-                                fontSize: 24,
-                                fontWeight: 'bold',
-                                color: 'black',
-                                marginTop: 10,
-                                textAlign: 'center',
-                            }}>
-                            ¿Cambia tu {'\n'} plan actual?
-                        </Text>
-                    </View>
-                </View>
-                 <TouchableWithoutFeedback
-    onPress={() => {
-        Alert.alert(
-            'Cancelar tu plan de suscripción',
-            "Ve a la configuración de suscripciones de tu dispositivo para cancelar el plan de suscripción!",
-            [
-                {
-                    text: 'OK',
-                    onPress: () => {
-                        console.log('OK Pressed');
-                    },
-                    style: 'default'
-                }
-            ],
-            { cancelable: true }
-        );
-    }}
->
-    <View style={{
-        position: 'absolute',
-        right: 20,
-        top: 70,
-        flexDirection: 'row',
-        alignItems: 'center',
-        zIndex: 999,
-        padding: 5  // Added for better touch area
-    }}>
-        <Image
-            source={require('./assets/images/whiteex.png')}
-            style={{
-                width: 15,
-                height: 15,
-                resizeMode: 'contain',
-                marginRight: 5,
-            }}
-        />
-        <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
-    </View>
-</TouchableWithoutFeedback>
-
-                {/* Bottom Section */}
-                <View
-                    style={{
-                        flex: 1.75,
-                        backgroundColor: '#017CFE',
-                        padding: 20,
-                        justifyContent: 'center',
-                    }}>
-                    {/* Plan Toggle */}
-                    <View
-                        style={{
-                            flexDirection: 'row',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            marginBottom: 20,
-                            marginTop: dynamicMarginTop,
-                            paddingVertical: 10,
-                            paddingHorizontal: 10,
-                            backgroundColor: 'white',
-                            borderRadius: 25,
-                            alignSelf: 'center',
-                        }}>
-                        <TouchableOpacity
-                            onPress={() => setSelectedPlan1('Básico')}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 25,
-                                backgroundColor:
-                                    selectedPlan === 'Básico' ? '#017CFE' : 'white',
-                                borderRadius: 20,
-                                marginHorizontal: 5,
-                            }}>
-                            <Text
-                                style={{
-                                    color: selectedPlan === 'Básico' ? '#FFF' : '#000',
-                                    fontWeight: 'bold',
-                                    fontSize: fontSizeLarge,
-                                }}>
-                                Básico
-                            </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            onPress={() => setSelectedPlan1('Pro')}
-                            style={{
-                                paddingVertical: 10,
-                                paddingHorizontal: 25,
-                                backgroundColor: selectedPlan === 'Pro' ? '#017CFE' : 'white',
-                                borderRadius: 20,
-                                marginHorizontal: 5,
-                            }}>
-                            <Text
-                                style={{
-                                    color: selectedPlan === 'Pro' ? '#FFF' : '#000',
-                                    fontWeight: 'bold',
-                                    fontSize: fontSizeLarge,
-                                }}>
-                                Pro
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                    {/* Features Section */}
-                    <View style={{ marginTop: 30 }}>
-                        {selectedPlanDetails.features.map((feature, index) => (
-                            <Text
-                                key={index}
-                                style={{
-                                    fontSize: fontSizeLarge,
-                                    color: 'white',
-                                    marginBottom: 30,
-                                }}>
-                                <Text style={{ fontSize: fontSizeLarge, color: '#FEBA01' }}>
-                                    ✓
-                                </Text>{' '}
-                                {feature}
-                            </Text>
-                        ))}
-                    </View>
-          /* Billing Cycle Options */
-                    <View
-                        style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                        {['Mensual', 'Anual'].map((billingCycle) => {
-                            const isCurrentPlan =
-    (selectedPlan || '') === (currentPlan || '') &&
-    (billingCycle || '') === (currentBillingCycle || '');
-const isSelected = (selectedBillingCycle || '') === (billingCycle || '');
-
-                            return (
-                                <TouchableOpacity
-                                    key={billingCycle}
-                                    onPress={() => setSelectedBillingCycle(billingCycle)}
-                                    style={{
-                                        flex: 1,
-                                        borderWidth: 1,
-                                        marginTop: 20,
-                                        marginBottom: 20,
-                                        borderColor: 'white',
-                                        paddingVertical: 8, // Padding dikey azaltıldı
-                                        paddingHorizontal: 12, // Padding yatay azaltıldı
-                                        borderRadius: 20,
-                                        marginHorizontal: 5,
-                                        alignItems: 'center',
-                                        backgroundColor: isSelected ? 'white' : 'transparent',
-                                        position: 'relative',
-                                        height: 125, // Sabit yükseklik
-                                        justifyContent: 'center', // İçeriği dikeyde ortala
-                                    }}>
-                                    {/* Small Box for 'Your Plan' */}
-                                    {isCurrentPlan && (
-                                        <View
-                                            style={{
-                                                backgroundColor: isSelected ? '#FEBA01' : 'white',
-                                                paddingVertical: 3, // Padding dikey azaltıldı
-                                                paddingHorizontal: 7, // Padding yatay azaltıldı
-                                                borderRadius: 5,
-                                                position: 'absolute',
-                                                top: -8, // Pozisyon hafifçe yukarı çekildi
-                                                alignSelf: 'center',
-                                            }}>
-                                            <Text style={{ color: 'black', fontSize: fontSizeSmall }}>
-                                                Your Plan
-                                            </Text>
-                                        </View>
-                                    )}
-
-                                    {/* Price and Cycle */}
-                                    <View style={{ alignItems: 'center' }}>
-                                        <Text
-                                            style={{
-                                                fontSize: fontSizeHuge, // Font boyutu aynı bırakıldı
-                                                fontWeight: 'bold',
-                                                color: isSelected ? 'black' : 'white',
-                                                // marginTop kaldırıldı veya azaltıldı
-                                            }}>
-                                            {selectedPlanDetails[billingCycle].price}
-                                        </Text>
-                                        <Text
-                                            style={{
-                                                fontSize: fontSizeLarge, // Font boyutu aynı bırakıldı
-                                                color: isSelected ? 'black' : 'white',
-                                            }}>
-                                            {selectedPlanDetails[billingCycle].cycle}
-                                        </Text>
-                                    </View>
-
-                                    {/* Checkmark Icon */}
-                                    {isSelected && (
-                                        <View
-                                            style={{
-                                                position: 'absolute',
-                                                top: -10, // Pozisyon hafifçe yukarı çekildi
-                                                right: -5,
-                                                backgroundColor: '#FEBA01',
-                                                width: 20, // Genişlik eklendi
-                                                height: 20, // Yükseklik eklendi
-                                                borderRadius: 10, // Tam bir daire için yarıçap                                                padding: 3, // Padding azaltıldı
-                                                justifyContent: 'center', // Dikey merkezleme
-
-                                            }}>
-                                            <Text
-                                                style={{
-                                                    color: 'black',
-                                                    fontSize: 12, // Font size küçültüldü (minimum düzeyde)
-                                                    fontWeight: 'bold',
-                                                    textAlign: 'center',
-                                                }}>
-                                                ✓
-                                            </Text>
-                                        </View>
-                                    )}
-                                </TouchableOpacity>
-                            );
-                        })}
-                    </View>
-          /* Action Button */
-                    <TouchableOpacity
-                        style={{
-                            backgroundColor: '#FEBA01',
-                            paddingVertical: 12,
-                            borderRadius: 40,
-                            marginTop: 30,
-                            alignItems: 'center',
-                            alignSelf: 'center',
-                            width: '100%',
-                        }}
-                        onPress={() => {
-                            if (isPlanChanged) {
-                                // Update subscription
-                                setCurrentPlan(selectedPlan);
-                                setIsSubscribing(true);
-                                  inAppBuySubscription4001(selectedPlan)
-                                setCurrentBillingCycle(selectedBillingCycle);
-
-                                if (currentPlan === 'Pro') {
-
-                                    // Lift timeout and reset chat counts
-                                    setIsTimeoutActive(false);
-                                    setChatCount(0);
-                                    setTrialChatCount(0);
-                                    AsyncStorage.setItem(
-                                        'isTimeoutActive',
-                                        JSON.stringify(false)
-                                    );
-                                    AsyncStorage.setItem('chatCount', JSON.stringify(0));
-                                    AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
-                                } else if (currentPlan === 'Básico') {
-
-                                    // Reset chat counts and reapply timeout logic
-                                    setChatCount(0);
-                                    setIsTimeoutActive(false); // Initially not in timeout
-                                    AsyncStorage.setItem(
-                                        'isTimeoutActive',
-                                        JSON.stringify(false)
-                                    );
-                                    AsyncStorage.setItem('chatCount', JSON.stringify(0));
-                                    AsyncStorage.setItem(
-                                        'trialChatCount',
-                                        JSON.stringify(trialChatCount)
-                                    );
-                                }
-
-                                saveToSupabase();
-                                setPage(9); // Navigate to the next page after subscription change
-                            } else {
-                                // Keep the current plan
-                                setPage(9);
-                            }
-                        }}>
-                        <Text
-                            style={{
-                                color: 'black',
-                                fontSize: fontSizeLarge,
-                                fontWeight: 'bold',
-                            }}>
-                            {buttonText}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
+    if (!alreadySelectedPlan) {
+      return (
+        <View style={{ flex: 1.25 }}>
+          {/* Activity Indicator Overlay */}
+          {isSubscribing && (
+            <View 
+              style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                right: 0, 
+                bottom: 0, 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+                zIndex: 1000 
+              }}
+            >
+              <ActivityIndicator size="large" color="#ffffff" />
+              <Text style={{ color: 'white', marginTop: 10 }}>
+                Procesando tu suscripción...
+              </Text>
             </View>
-        );
-    }
+          )}
 
-    else if (page === 4002) {
+          {/* Top Section */}
+          <View style={{ flex: 1, backgroundColor: '#FEBA01', paddingTop: 55 }}>
+            {/* Container for Logo and Basic Layout */}
+            <View style={{ position: 'relative', alignItems: 'center' }}>
+              {/* Logo */}
+              <Image
+                source={require('./assets/images/dadwblue.png')}
+                style={{
+                  width: 200,
+                  height: 56,
+                  resizeMode: 'contain',
+                }}
+              />
+            </View>
+
+            <View style={{ flex: 1, alignItems: 'center', paddingTop: 45 }}>
+              <Text
+                style={{
+                  fontSize: 24,
+                  fontWeight: 'bold',
+                  color: textColor,
+                  marginTop: 20,
+                  textAlign: 'center',
+                }}>
+                ¿Cuál prefieres?
+              </Text>
+            </View>
+
+            {/* Optional animated image FIRST */}
+            {makeUserWant && (
+              <Animated.View
+                style={{
+                  opacity: popAnim,
+                  transform: [{ scale: popAnim }],
+                  position: 'absolute',
+                  marginTop: 20,
+                  right: 0,
+                }}>
+                <Image
+                  source={require('./assets/images/capiandchat.png')}
+                  style={{ width: 350, height: 350 }}
+                />
+              </Animated.View>
+            )}
+
+            {/* Cancel Button AFTER the image */}
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert(
+                  'Cancelar tu plan de suscripción',
+                  "Puedes cancelar la prueba gratuita antes de que terminen los 7 días.",
+                  [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
+                );
+              }}
+              style={{
+                position: 'absolute',
+                right: 20,
+                top: 75,
+                flexDirection: 'row',
+                alignItems: 'center',
+              }}
+            >
+              <Image
+                source={require('./assets/images/whiteex.png')}
+                style={{
+                  width: 15,
+                  height: 15,
+                  resizeMode: 'contain',
+                  marginRight: 5,
+                }}
+              />
+              <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Bottom Section */}
+          <View
+            style={{
+              flex: 1.75,
+              backgroundColor: '#017CFE',
+              padding: 20,
+              justifyContent: 'center',
+               position: 'relative'
+            }}>
+            {/* Plan Toggle */}
+            <View
+    style={{
+      position: 'absolute',
+      top: -30,  // Adjust this value to fine-tune the vertical position
+      alignSelf: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'white',
+      borderRadius: 25,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      zIndex: 1,
+    }}>
+              <TouchableOpacity
+                onPress={() => setSelectedPlan1('Básico')}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 25,
+                  backgroundColor:
+                    selectedPlan === 'Básico' ? '#017CFE' : 'white',
+                  borderRadius: 20,
+                  marginHorizontal: 5,
+                }}>
+                <Text
+                  style={{
+                    color: selectedPlan === 'Básico' ? '#FFF' : '#000',
+                    fontWeight: 'bold',
+                    fontSize: fontSizeLarge,
+                  }}>
+                  Básico
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSelectedPlan1('Pro')}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 25,
+                  backgroundColor: selectedPlan === 'Pro' ? '#017CFE' : 'white',
+                  borderRadius: 20,
+                  marginHorizontal: 5,
+                }}>
+                <Text
+                  style={{
+                    color: selectedPlan === 'Pro' ? '#FFF' : '#000',
+                    fontWeight: 'bold',
+                    fontSize: fontSizeLarge,
+                  }}>
+                  Pro
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Features Section */}
+            <View style={{ marginBottom: 50 ,marginTop: 50 }}>
+              {selectedPlanDetails.features.map((feature, index) => (
+                <Text
+                  key={index}
+                  style={{
+                    fontSize: fontSizeLarge,
+                    color: 'white',
+                    marginBottom: 12,
+                  }}>
+                  <Text
+                    style={{
+                      fontSize: fontSizeLarge,
+                      color: '#FEBA01',
+                      fontWeight: 'bold',
+                    }}>
+                    ✓
+                  </Text>{' '}
+                  {feature}
+                </Text>
+              ))}
+            </View>
+
+            {/* Billing Cycle Toggle */}
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              {/* Mensual and Anual Options */}
+              {['Mensual', 'Anual'].map((billingCycle) => {
+                const isSelected = selectedBillingCycle === billingCycle;
+                return (
+                  <TouchableOpacity
+                    key={billingCycle}
+                    onPress={() => setSelectedBillingCycle(billingCycle)}
+                    style={{
+                      flex: 1,
+                      borderWidth: 1,
+                      borderColor: 'white',
+                      padding: 1,
+                      borderRadius: 20,
+                      marginHorizontal: 5,
+                      alignItems: 'center',
+                      backgroundColor: isSelected ? 'white' : 'transparent',
+                      height: 110,
+                      marginTop: 5,
+
+                    }}>
+                    {/* Small Box */}
+                    <View
+                      style={{
+                        backgroundColor: isSelected ? '#FEBA01' : 'white',
+                        paddingVertical: 5,
+                        paddingHorizontal: 8,
+                        borderRadius: 5,
+                        position: 'absolute',
+                        top: -10,
+                        alignSelf: 'center',
+                      }}>
+                      <Text style={{ color: 'black', fontSize: fontSizeSmall }}>
+                        {smallBoxTexts[selectedPlan][billingCycle]}
+                      </Text>
+                    </View>
+
+                    {/* Price */}
+                    <Text
+                      style={{
+                        fontSize: fontSizeHuge,
+                        fontWeight: 'bold',
+                        color: isSelected ? 'black' : 'white',
+                        marginTop: 20,
+                        padding: 5,
+
+                      }}>
+                      {selectedPlanDetails[billingCycle].price}
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: fontSizeLarge,
+                        color: isSelected ? 'black' : 'white',
+                        padding: 5,
+
+                      }}>
+                      {selectedPlanDetails[billingCycle].cycle}
+                    </Text>
+                    {/* Checkmark Icon */}
+                    {isSelected && (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: -10,
+                          right: -5,
+                          backgroundColor: '#FEBA01',
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          padding: 5,
+                          justifyContent: 'center',
+
+                        }}>
+                        <Text
+                          style={{
+                            color: 'black',
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                            textAlign: 'center',
+                          }}>
+                          ✓
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Seleccionar Button */}
+            <TouchableOpacity
+              style={{
+                backgroundColor: '#FFB901',
+                paddingVertical: 15,
+                borderRadius: 40,
+                marginTop: 20,
+                alignItems: 'center',
+                alignSelf: 'center',
+                width: '100%',
+              }}
+             onPress={() => {
+    if (selectedBillingCycle) {
+      setCurrentPlan(selectedPlan);
+      setCurrentBillingCycle(selectedBillingCycle);
+                        setIsSubscribing(true);
+
+      inAppBuySubscription(selectedPlan)
+        .then(() => {
+          if (currentPlan === 'Pro') {
+            setIsTimeoutActive(false);
+            setChatCount(0);
+            setTrialChatCount(0);
+            AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
+            AsyncStorage.setItem('chatCount', JSON.stringify(0));
+            AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
+          }
+        })
+        .catch((error) => {
+          console.log('Purchase flow failed:', error);
+        });
+    } else {
+      Alert.alert('Por favor, selecciona un ciclo de facturación');
+    }
+  }}>
+
+              <Text
+                style={{
+                  color: 'black',
+                  fontSize: fontSizeLarge,
+                  fontWeight: 'bold',
+                }}>
+                {isTrialActive ? 'Suscríbete: 7 días gratis >' : 'Suscríbete >'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Free Trial Section */}
+            <View
+              style={{
+                backgroundColor: 'white',
+                paddingVertical: 10,
+                borderRadius: 40,
+                marginTop: 15,
+                alignItems: 'center',
+                alignSelf: 'center',
+                width: '100%',
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                paddingHorizontal: 10,
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 14,
+                  color: 'black',
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  marginLeft: 25,
+                }}>
+                ¿No sabes? Activa prueba gratis
+              </Text>
+              <Switch
+                value={isTrialActive}
+                onValueChange={(value) => setIsTrialActive(value)}
+                thumbColor={isTrialActive ? '#FFF' : '#FFF'}
+                trackColor={{ false: '#767577', true: '#017CFE' }}
+              />
+            </View>
+          </View>
+        </View >
+      );
+    } else {       // PAGE 4000 LAYOUT (CHANGE SUBSCRIPTION)       
+  return (         
+    <View style={{ flex: 1.25 }}>           
+      {/* Activity Indicator Overlay */}           
+      {isSubscribing && (             
+        <View                
+          style={{                  
+            position: 'absolute',                  
+            top: 0,                  
+            left: 0,                  
+            right: 0,                  
+            bottom: 0,                  
+            justifyContent: 'center',                  
+            alignItems: 'center',                  
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',                  
+            zIndex: 1000                
+          }}             
+        >               
+          <ActivityIndicator size="large" color="#ffffff" />               
+          <Text style={{ color: 'white', marginTop: 10 }}>                 
+            Procesando tu suscripción...               
+          </Text>             
+        </View>           
+      )}            
+      
+      {/* Top Section */}           
+      <View style={{ flex: 1, backgroundColor: '#FEBA01', paddingTop: 55 }}>             
+        {/* Container for Logo and Cancel Button */}             
+        <View style={{ position: 'relative', alignItems: 'center' }}>               
+          {/* Logo */}               
+          <Image                 
+            source={require('./assets/images/dadwblue.png')}                 
+            style={{                   
+              width: 200,                   
+              height: 56,                   
+              resizeMode: 'contain',                 
+            }}               
+          />               
+          
+          {/* Cancel Button */}
+          <TouchableOpacity
+            onPress={() => {
+              Alert.alert(
+                'Cancelar tu plan de suscripción',
+                "Ve a la configuración de suscripciones de tu dispositivo para cancelar el plan de suscripción!",
+                [{ text: 'OK', onPress: () => console.log('OK Pressed') }]
+              );
+            }}
+            style={{
+              position: 'absolute',
+              right: 20,
+              top: 20,
+              flexDirection: 'row',
+              alignItems: 'center',
+            }}
+          >
+            <Image
+              source={require('./assets/images/whiteex.png')}
+              style={{
+                width: 15,
+                height: 15,
+                resizeMode: 'contain',
+                marginRight: 5,
+              }}
+            />
+            <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
+          </TouchableOpacity>
+        </View>             
+        
+        <View style={{ alignItems: 'center', paddingTop: 45 }}>               
+          <Text                 
+            style={{                   
+              fontSize: 24,                   
+              fontWeight: 'bold',                   
+              color: 'black',                   
+              marginTop: 10,                   
+              textAlign: 'center',                 
+            }}>                 
+            ¿Cambia tu {'\n'} plan actual?               
+          </Text>             
+        </View>           
+      </View>            
+      
+      {/* Bottom Section */}
+            <View
+            style={{
+              flex: 1.75,
+              backgroundColor: '#017CFE',
+              padding: 20,
+              justifyContent: 'center',
+               position: 'relative'
+            }}>
+            {/* Plan Toggle */}
+            <View
+    style={{
+      position: 'absolute',
+      top: -30,  // Adjust this value to fine-tune the vertical position
+      alignSelf: 'center',
+      flexDirection: 'row',
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: 'white',
+      borderRadius: 25,
+      paddingVertical: 10,
+      paddingHorizontal: 10,
+      zIndex: 1,
+    }}>
+              <TouchableOpacity
+                onPress={() => setSelectedPlan1('Básico')}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 25,
+                  backgroundColor:
+                    selectedPlan === 'Básico' ? '#017CFE' : 'white',
+                  borderRadius: 20,
+                  marginHorizontal: 5,
+                }}>
+                <Text
+                  style={{
+                    color: selectedPlan === 'Básico' ? '#FFF' : '#000',
+                    fontWeight: 'bold',
+                    fontSize: fontSizeLarge,
+                  }}>
+                  Básico
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setSelectedPlan1('Pro')}
+                style={{
+                  paddingVertical: 10,
+                  paddingHorizontal: 25,
+                  backgroundColor: selectedPlan === 'Pro' ? '#017CFE' : 'white',
+                  borderRadius: 20,
+                  marginHorizontal: 5,
+                }}>
+                <Text
+                  style={{
+                    color: selectedPlan === 'Pro' ? '#FFF' : '#000',
+                    fontWeight: 'bold',
+                    fontSize: fontSizeLarge,
+                  }}>
+                  Pro
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {/* Features Section */}
+            <View style={{ marginBottom: 50 ,marginTop: 50}}>
+              {selectedPlanDetails.features.map((feature, index) => (
+                <Text
+                  key={index}
+                  style={{
+                    fontSize: fontSizeLarge,
+                    color: 'white',
+                    marginBottom: 12,
+                  }}>
+                  <Text style={{ fontSize: fontSizeLarge, color: '#FEBA01' }}>
+                    ✓
+                  </Text>{' '}
+                  {feature}
+                </Text>
+              ))}
+            </View>
+
+            {/* Billing Cycle Options */}
+            <View
+              style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              {['Mensual', 'Anual'].map((billingCycle) => {
+                const isCurrentPlan =
+                  selectedPlan === currentPlan &&
+                  billingCycle === currentBillingCycle;
+                const isSelected = selectedBillingCycle === billingCycle;
+
+                return (
+                  <TouchableOpacity
+                    key={billingCycle}
+                    onPress={() => setSelectedBillingCycle(billingCycle)}
+                    style={{
+                      flex: 1,
+                      borderWidth: 1,
+                      marginTop: 20,
+                      marginBottom: 20,
+                      borderColor: 'white',
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 20,
+                      marginHorizontal: 5,
+                      alignItems: 'center',
+                      backgroundColor: isSelected ? 'white' : 'transparent',
+                      position: 'relative',
+                      height: 125,
+                      justifyContent: 'center',
+                    }}>
+                    {/* Small Box for 'Your Plan' */}
+                    {isCurrentPlan && (
+                      <View
+                        style={{
+                          backgroundColor: isSelected ? '#FEBA01' : 'white',
+                          paddingVertical: 3,
+                          paddingHorizontal: 7,
+                          borderRadius: 5,
+                          position: 'absolute',
+                          top: -8,
+                          alignSelf: 'center',
+                        }}>
+                        <Text style={{ color: 'black', fontSize: fontSizeSmall }}>
+                          Your Plan
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={{ alignItems: 'center' }}>
+                      <Text
+                        style={{
+                          fontSize: fontSizeHuge,
+                          fontWeight: 'bold',
+                          color: isSelected ? 'black' : 'white',
+                        }}>
+                        {selectedPlanDetails[billingCycle].price}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: fontSizeLarge,
+                          color: isSelected ? 'black' : 'white',
+                        }}>
+                        {selectedPlanDetails[billingCycle].cycle}
+                      </Text>
+                    </View>
+
+                    {isSelected && (
+                      <View
+                        style={{
+                          position: 'absolute',
+                          top: -10,
+                          right: -5,
+                          backgroundColor: '#FEBA01',
+                          width: 20,
+                          height: 20,
+                          borderRadius: 10,
+                          justifyContent: 'center',
+                        }}>
+                        <Text
+                          style={{
+                            color: 'black',
+                            fontSize: 12,
+                            fontWeight: 'bold',
+                            textAlign: 'center',
+                          }}>
+                          ✓
+                        </Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+          <TouchableOpacity
+  style={{
+    backgroundColor: '#FEBA01',
+    paddingVertical: 12,
+    borderRadius: 40,
+    marginTop: 25,
+    alignItems: 'center',
+    alignSelf: 'center',
+    width: '100%',
+  }}
+  onPress={() => {
+    if (isPlanChanged) {
+      setIsSubscribing(true);
+      inAppBuySubscription(selectedPlan)
+        .then(() => {
+          if (currentPlan === 'Pro') {
+            setIsTimeoutActive(false);
+            setChatCount(0);
+            setTrialChatCount(0);
+            AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
+            AsyncStorage.setItem('chatCount', JSON.stringify(0));
+            AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
+          } else if (currentPlan === 'Básico') {
+            setChatCount(0);
+            setIsTimeoutActive(false);
+            AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
+            AsyncStorage.setItem('chatCount', JSON.stringify(0));
+            AsyncStorage.setItem('trialChatCount', JSON.stringify(trialChatCount));
+          }
+          saveToSupabase();
+        })
+        .catch((error) => {
+          console.log('Purchase flow failed:', error);
+        });
+    } else {
+      setPage(9);
+    }
+  }}>
+  <Text
+    style={{
+      color: 'black',
+      fontSize: fontSizeLarge,
+      fontWeight: 'bold',
+    }}>
+    {buttonText}
+  </Text>
+</TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+  }
+
+
+  else if (page === 4002) {
         const selectedPlanDetails = planDetails[selectedPlan];
 
         const dynamicMarginTop = -0.1 * screenHeight;
@@ -3740,34 +3727,32 @@ const isSelected = (selectedBillingCycle || '') === (billingCycle || '');
                             alignSelf: 'center',
                             width: '100%',
                         }}
-                       onPress={() => {
+                   onPress={() => {
     if (selectedBillingCycle) {
-        // Set the states as currently implemented
-        setCurrentPlan(selectedPlan);
-        setIsSubscribing(true);
-        setCurrentBillingCycle(selectedBillingCycle);
-        
-        // Call the purchase function with the selected plan
-        inAppBuySubscription(selectedPlan)
-            .then(() => {
-                // These state updates should only occur after successful purchase
-                if (selectedPlan === 'Pro') {
-                    setIsTimeoutActive(false);
-                    setChatCount(0);
-                    setTrialChatCount(0);
-                    AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
-                    AsyncStorage.setItem('chatCount', JSON.stringify(0));
-                    AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
-                }
-                // Navigation happens automatically in inAppBuySubscription on success
-            })
-            .catch((error) => {
-                // Error handling is already implemented in inAppBuySubscription
-                console.log('Purchase flow failed:', error);
-            });
-    }
+      setCurrentPlan(selectedPlan);
+              setIsSubscribing(true);
 
-                        }}>
+      setCurrentBillingCycle(selectedBillingCycle);
+      
+      inAppBuySubscription(selectedPlan)
+        .then(() => {
+          if (currentPlan === 'Pro') {
+            setIsTimeoutActive(false);
+            setChatCount(0);
+            setTrialChatCount(0);
+            AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
+            AsyncStorage.setItem('chatCount', JSON.stringify(0));
+            AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
+          }
+        })
+        .catch((error) => {
+          console.log('Purchase flow failed:', error);
+        });
+    } else {
+      Alert.alert('Por favor, selecciona un ciclo de facturación');
+    }
+  }}>
+
                         <Text
                             style={{
                                 color: 'black',
@@ -4662,7 +4647,7 @@ const isSelected = (selectedBillingCycle || '') === (billingCycle || '');
                                     onPress={() => {
                                         setupgradetopro(false);
                                         // Navigate to page 9
-                                        setPage(4001); // Assuming you have a function or state for setting the current page
+                                        setPage(4000); // Assuming you have a function or state for setting the current page
                                     }}
                                     style={{
                                         backgroundColor: '#ffbb00',
@@ -5931,7 +5916,7 @@ const isSelected = (selectedBillingCycle || '') === (billingCycle || '');
                             </Text>
                         </View>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setPage(4001)}>
+                    <TouchableOpacity onPress={() => setPage(4000)}>
                         <View
                             style={{
                                 flexDirection: 'row',
