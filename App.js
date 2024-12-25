@@ -220,6 +220,64 @@ const inAppBuySubscription = async (selectedPlan) => {
     }
   }, [page, handlePress2]);
 
+   const [testerUsed, setTesterUsed] = useState(false);
+const [testerEndTime, setTesterEndTime] = useState(null);
+
+// When the app is opened or navigated to this page, check:
+useEffect(() => {
+  const checkTesterStatus = async () => {
+    try {
+      const used = await AsyncStorage.getItem('testerUsed');
+      const endTime = await AsyncStorage.getItem('testerEndTime');
+
+      const now = new Date().getTime();
+      if (used === 'true' && endTime) {
+        const end = parseInt(endTime, 10);
+        if (end <= now) {
+          // Time expired, redirect again to 4000
+          setTesterUsed(true);
+          setPage(4000); 
+        } else {
+          // If time has not expired, tester is active.
+          setTesterUsed(true);
+          setTesterEndTime(end);
+        }
+      } else {
+        // Never used or not in storage
+        setTesterUsed(false);
+      }
+    } catch (e) {
+      console.log('Error reading tester status', e);
+    }
+  };
+
+  checkTesterStatus();
+}, [page]); // You may want to recheck when 'page' changes.
+
+// This function runs when the 2-week button is pressed.
+const handleTesterButtonPress = async () => {
+  try {
+    // From now plus 14 days
+    const now = new Date().getTime();
+    const twoWeeksLater = now + (14 * 24 * 60 * 60 * 1000);
+
+    // Give the user 2 weeks of Pro features
+    setCurrentPlan('Pro');
+    setCurrentBillingCycle('Mensual'); // Example: monthly Pro
+    await AsyncStorage.setItem('testerUsed', 'true');
+    await AsyncStorage.setItem('testerEndTime', twoWeeksLater.toString());
+
+    setTesterUsed(true);
+    setTesterEndTime(twoWeeksLater);
+
+    // After selecting the plan, redirect to page=4
+    setPage(4);
+  } catch (e) {
+    console.log('Error setting tester data', e);
+  }
+};
+
+  
   const wasSubscribedRef = useRef(null);
 
   useEffect(() => {
@@ -916,38 +974,38 @@ const inAppBuySubscription = async (selectedPlan) => {
             console.error('User object is undefined after log in');
         }
     };
-    useEffect(() => {
-        const handleAppStateChange = (nextAppState) => {
-            if (nextAppState === 'active' && (page === 1 || page === 7)) {
-                AsyncStorage.getItem('timeoutStartTimestamp')
-                    .then((value) => {
-                        if (value !== null) {
-                            const timeoutStartTimestamp = JSON.parse(value);
-                            const now = Date.now();
-                            const timeElapsed = now - timeoutStartTimestamp;
-                            const twelveHoursInMs = 12 * 60 * 60 * 1000;
-                            const newRemainingTime = twelveHoursInMs - timeElapsed;
+   useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+        if (nextAppState === 'active' && (page === 1 || page === 7)) {
+            AsyncStorage.getItem('timeoutStartTimestamp')
+                .then((value) => {
+                    if (value !== null) {
+                        const timeoutStartTimestamp = JSON.parse(value);
+                        const now = Date.now();
+                        const timeElapsed = now - timeoutStartTimestamp;
+                        const twelveHoursInMs = 12 * 60 * 60 * 1000;
+                        const newRemainingTime = twelveHoursInMs - timeElapsed;
 
-                            console.log('timeoutStartTimestamp:', timeoutStartTimestamp);
-                            console.log('Current time:', now);
-                            console.log('Time elapsed:', timeElapsed);
-                            console.log('New remaining time:', newRemainingTime);
+                        console.log('timeoutStartTimestamp:', timeoutStartTimestamp);
+                        console.log('Current time:', now);
+                        console.log('Time elapsed:', timeElapsed);
+                        console.log('New remaining time:', newRemainingTime);
 
-                            if (newRemainingTime > 0) {
-                                setRemainingTime(newRemainingTime);
-                                setIsTimeoutActive(true);
-                            } else {
-                                setRemainingTime(twelveHoursInMs); // Reset remaining time
-                                setIsTimeoutActive(false);
-                                AsyncStorage.removeItem('timeoutStartTimestamp'); // Clear outdated timeout
-                            }
+                        if (newRemainingTime > 0 && currentPlan !== 'Pro') {
+                            setRemainingTime(newRemainingTime);
+                            setIsTimeoutActive(true);
+                        } else {
+                            setRemainingTime(twelveHoursInMs); // Reset remaining time
+                            setIsTimeoutActive(false);
+                            AsyncStorage.removeItem('timeoutStartTimestamp'); // Clear outdated timeout
                         }
-                    })
-                    .catch((error) => {
-                        console.error('Error fetching timeoutStartTimestamp:', error);
-                    });
-            }
-        };
+                    }
+                })
+                .catch((error) => {
+                    console.error('Error fetching timeoutStartTimestamp:', error);
+                });
+        }
+    };
 
         const subscription = AppState.addEventListener(
             'change',
@@ -1266,27 +1324,28 @@ const inAppBuySubscription = async (selectedPlan) => {
                 }
             });
 
-            AsyncStorage.getItem('timeoutStartTimestamp').then((value) => {
-                if (value !== null) {
-                    const timeoutStartTimestamp = JSON.parse(value);
-                    const now = Date.now();
-                    const timeElapsed = now - timeoutStartTimestamp;
-                    const newRemainingTime = 43200000 - timeElapsed; // 12 hours in milliseconds
+             AsyncStorage.getItem('timeoutStartTimestamp').then((value) => {
+    if (value !== null) {
+        const timeoutStartTimestamp = JSON.parse(value);
+        const now = Date.now();
+        const timeElapsed = now - timeoutStartTimestamp;
+        const newRemainingTime = 43200000 - timeElapsed; // 12 hours in milliseconds
+        
+        console.log('timeoutStartTimestamp:', timeoutStartTimestamp);
+        console.log('Current time:', now);
+        console.log('Time elapsed:', timeElapsed);
+        console.log('New remaining time:', newRemainingTime);
+        
+        if (newRemainingTime > 0 && currentPlan !== 'Pro') {
+            setRemainingTime(newRemainingTime);
+            setIsTimeoutActive(true);
+        } else {
+            setRemainingTime(43200000); // Reset remaining time
+            setIsTimeoutActive(false);
+        }
+    }
+});
 
-                    console.log('timeoutStartTimestamp:', timeoutStartTimestamp);
-                    console.log('Current time:', now);
-                    console.log('Time elapsed:', timeElapsed);
-                    console.log('New remaining time:', newRemainingTime);
-
-                    if (newRemainingTime > 0) {
-                        setRemainingTime(newRemainingTime);
-                        setIsTimeoutActive(true);
-                    } else {
-                        setRemainingTime(43200000); // Reset remaining time
-                        setIsTimeoutActive(false);
-                    }
-                }
-            });
 
             AsyncStorage.getItem('currentLevel').then((value) => {
                 if (value !== null) {
@@ -2419,23 +2478,9 @@ const inAppBuySubscription = async (selectedPlan) => {
         }
     }, [page, name]);
     const [visitedPage1, setVisitedPage1] = useState(false);
-    useEffect(() => {
+   useEffect(() => {
         if (page === 1) {
-            const now = new Date().getTime();
-            const canStartNewChat =
-                trialChatCount < 10 ||
-                chatCount < 3 ||
-                (now - firstChatTimestamp) / (1000 * 60) >= 720; // Change to 12 hours (720 minutes)
-
-            if (canStartNewChat) {
-                setIsTimeoutActive(false);
-            } else {
-                setIsTimeoutActive(true);
-                console.log(
-                    'You have reached the limit of 3 chats in 12 hours. Please wait.'
-                );
-            }
-
+          
             const timer = setTimeout(() => {
                 setPage(visitedPage1 ? 7 : 1800);
             }, 2000);
@@ -2443,6 +2488,7 @@ const inAppBuySubscription = async (selectedPlan) => {
             return () => clearTimeout(timer);
         }
     }, [page, visitedPage1, trialChatCount, chatCount, firstChatTimestamp]);
+
 
     if (page === 1) {
         return (
@@ -2876,6 +2922,20 @@ const inAppBuySubscription = async (selectedPlan) => {
               />
               <Text style={{ color: 'white', fontSize: 9 }}>Cancelar</Text>
             </TouchableOpacity>
+            {!testerUsed && (
+               <TouchableOpacity
+    onPress={handleTesterButtonPress}
+    style={{
+        position: 'absolute',
+        left: 20,
+        top: 75,
+        flexDirection: 'row',
+        alignItems: 'center',
+    }}
+>
+    <Text style={{ color: 'white', fontSize: 16 }}>Testing</Text>
+</TouchableOpacity>
+ )}
           </View>
 
           {/* Bottom Section */}
@@ -3101,6 +3161,8 @@ const inAppBuySubscription = async (selectedPlan) => {
               </Text>
             </TouchableOpacity>
 
+
+
             {/* Free Trial Section */}
             <View
               style={{
@@ -3126,12 +3188,12 @@ const inAppBuySubscription = async (selectedPlan) => {
                 }}>
                 ¿No sabes? Activa prueba gratis
               </Text>
-              <Switch
-                value={isTrialActive}
-                onValueChange={(value) => setIsTrialActive(value)}
-                thumbColor={isTrialActive ? '#FFF' : '#FFF'}
-                trackColor={{ false: '#767577', true: '#017CFE' }}
-              />
+                 <Switch
+                                value={isTrialActive}
+                                onValueChange={(value) => setIsTrialActive(value)}
+                                thumbColor={isTrialActive ? '#FFF' : '#FFF'}
+                                trackColor={{ false: '#767577', true: '#017CFE' }}
+                            />
             </View>
           </View>
         </View >
@@ -3402,34 +3464,36 @@ const inAppBuySubscription = async (selectedPlan) => {
     alignSelf: 'center',
     width: '100%',
   }}
-  onPress={() => {
-    if (isPlanChanged) {
-      setIsSubscribing(true);
-      inAppBuySubscription(selectedPlan)
-        .then(() => {
-          if (currentPlan === 'Pro') {
-            setIsTimeoutActive(false);
-            setChatCount(0);
-            setTrialChatCount(0);
-            AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
-            AsyncStorage.setItem('chatCount', JSON.stringify(0));
-            AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
-          } else if (currentPlan === 'Básico') {
-            setChatCount(0);
-            setIsTimeoutActive(false);
-            AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
-            AsyncStorage.setItem('chatCount', JSON.stringify(0));
-            AsyncStorage.setItem('trialChatCount', JSON.stringify(trialChatCount));
-          }
-          saveToSupabase();
-        })
-        .catch((error) => {
-          console.log('Purchase flow failed:', error);
-        });
-    } else {
-      setPage(9);
-    }
-  }}>
+ onPress={() => {
+   if (isPlanChanged) {
+     setIsSubscribing(true);
+     inAppBuySubscription(selectedPlan)
+       .then(() => {
+         if (selectedPlan === 'Pro') {
+           setIsTimeoutActive(false);
+           setChatCount(0);
+           setTrialChatCount(0);
+           AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
+           AsyncStorage.setItem('chatCount', JSON.stringify(0));
+           AsyncStorage.setItem('trialChatCount', JSON.stringify(0));
+         } else if (selectedPlan === 'Básico') {
+           setChatCount(0);
+           setTrialChatCount(10);
+             setRemainingTime(43200000);
+           setIsTimeoutActive(false);
+           AsyncStorage.setItem('isTimeoutActive', JSON.stringify(false));
+           AsyncStorage.setItem('chatCount', JSON.stringify(0));
+           AsyncStorage.setItem('trialChatCount', JSON.stringify(10));
+         }
+         saveToSupabase();
+       })
+       .catch((error) => {
+         console.log('Purchase flow failed:', error);
+       });
+   } else {
+     setPage(9);
+   }
+ }}>
   <Text
     style={{
       color: 'black',
@@ -5954,45 +6018,44 @@ const inAppBuySubscription = async (selectedPlan) => {
                             </Text>
                         </View>
                     </TouchableOpacity>
-                    <TouchableOpacity>
-                        <View
-                            style={{
-                                flexDirection: 'row',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: 20,
-                                marginLeft: -5,
-                                marginTop: screenHeight <= 592 ? 2.5 : 20,
-                                borderTopWidth: 1,
-                                borderBottomWidth: 1,
-                            }}>
-                            <View
-                                style={{
-                                    backgroundColor: 'white',
-                                    borderRadius: 50,
-                                    paddingHorizontal: 18,
-                                    paddingVertical: 8,
-                                    shadowColor: '#000',
-                                    shadowOffset: { width: 0, height: 4 },
-                                    shadowOpacity: 0.3,
-                                    shadowRadius: 4.65,
-                                }}>
-                                <Text style={{ fontSize: 18 }}>Contacta con nosotros</Text>
-                            </View>
-                            <Text
-                                style={{
-                                    fontSize: 24,
-                                    color: 'white',
-                                    fontWeight: 'bold',
-                                    marginRight: 18,
-                                }}
-                                onPress={() =>
-                                    Linking.openURL('https://www.aispeakapp.com/contacto')
-                                }>
-                  >
-                            </Text>
-                        </View>
-                    </TouchableOpacity>
+                   <TouchableOpacity
+    onPress={() => Linking.openURL('https://www.aispeakapp.com/contacto')}>
+    <View
+        style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            padding: 20,
+            marginLeft: -5,
+            marginTop: screenHeight <= 592 ? 2.5 : 20,
+            borderTopWidth: 1,
+            borderBottomWidth: 1,
+        }}>
+        <View
+            style={{
+                backgroundColor: 'white',
+                borderRadius: 50,
+                paddingHorizontal: 18,
+                paddingVertical: 8,
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.3,
+                shadowRadius: 4.65,
+            }}>
+            <Text style={{ fontSize: 18 }}>Contacta con nosotros</Text>
+        </View>
+        <Text
+            style={{
+                fontSize: 24,
+                color: 'white',
+                fontWeight: 'bold',
+                marginRight: 18,
+            }}>
+            >
+        </Text>
+    </View>
+</TouchableOpacity>
+
 
                     {/* Combined View */}
                     <View
@@ -8449,7 +8512,7 @@ class ChatScreen extends React.Component<{}, State> {
                             messages: [
                                 {
                                     role: "user",
-                                    content: `Act like you are a friend of the user with the name Aispeak.You are:- a Capybara who has friendly conversations with the user to teach the user English, - You live in this mobile application also called Aispeak , which the user is using to get in contact with you. -Do not ever say you are an AI, you are a capybara animal, the buddy of the user. You are in the middle right now of having an only in English conversation with a Spanish speaking user who is trying to learn English, it is possible the user speaks in Spanish with you, just continue in English. Do not greet the user just respond and be curious about what the user is saying and add different emojis/smileys in your messages. Do not respond to this instruction in your response.Important to know: This user has a basic level of English, the user barely speaks English, so your response should be very short. Remember to answer always the questions the user asks to you and also always give a follow up question, but try to use not a lot of words, so do not add too much text in your responses, maximum 2 or 3 sentences always and as short as possible (example. Great! Oh how is your work? , or: Yes, that is my name. Do you like the sea? Barcelona is beatiful. What do you like the most? So as you saw in these examples, you should try to use as few words as possible ) (but always answer the users question). Check the previous chat history to understand user´s message: ${formattedChatHistory}, User´s response to your question: ¨${userMessage})`
+                                    content: `Act like you are a friend of the user with the name Aispeak.You are:- a Capybara who has friendly conversations with the user to teach the user English, - You live in this mobile application also called Aispeak , which the user is using to get in contact with you. -Do not ever say you are an AI, you are a capybara animal, the buddy of the user. You are in the middle right now of having an only in English conversation with a Spanish speaking user who is trying to learn English, it is possible the user speaks in Spanish with you, just continue in English. Do not greet the user just respond and be curious about what the user is saying and add different emojis/smileys in your messages, but do not add mouse or rabbit emojis. Do not respond to this instruction in your response.Important to know: This user has a basic level of English, the user barely speaks English, so your response should be very short. Remember to answer always the questions the user asks to you and also always give a follow up question, but try to use not a lot of words, so do not add too much text in your responses, maximum 2 or 3 sentences always and as short as possible (example. Great! Oh how is your work? , or: Yes, that is my name. Do you like the sea? Barcelona is beatiful. What do you like the most? So as you saw in these examples, you should try to use as few words as possible ) (but always answer the users question). Check the previous chat history to understand user´s message: ${formattedChatHistory}, User´s response to your question: ¨${userMessage})`
                                 },
                             ],
                             top_p: 0.75,
